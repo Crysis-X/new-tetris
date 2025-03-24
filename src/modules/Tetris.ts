@@ -31,6 +31,7 @@ export type Board = number[][];
 export class Tetris {
   private board: Board;
   private score: number = 0;
+  private speed = 500;
   private update: (board: Board) => void;
   private figure: { figure: number[][]; x: number; y: number };
   private intervalId: number | null = null;
@@ -43,11 +44,21 @@ export class Tetris {
     this.update = update;
     this.figure = this.spawn();
   }
-
+  getSpeed = () => this.speed;
+  setSpeed = (speed: number) => {
+    this.speed = speed;
+    if (this.intervalId) clearInterval(this.intervalId);
+    this.intervalId = this.createInterval(this.intervalCallback);
+  };
+  private intervalCallback = () => this.fall();
+  private createInterval = (fn: Function) => {
+    const id = setInterval(() => fn(), this.speed);
+    return id;
+  };
   start() {
     this.updateGameState();
-    this.intervalId = window.setInterval(() => this.fall(), 500);
-    window.addEventListener("keydown", this.handle);
+    this.intervalId = this.createInterval(this.intervalCallback);
+    addEventListener("keydown", this.handle);
   }
 
   stop() {
@@ -55,7 +66,7 @@ export class Tetris {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
-    window.removeEventListener("keydown", this.handle);
+    removeEventListener("keydown", this.handle);
   }
   getScore = () => this.score;
   private spawn() {
@@ -80,7 +91,9 @@ export class Tetris {
     }
   };
   private fall() {
-    if (!this.isCollision(this.figure.figure, this.figure.x, this.figure.y + 1)) {
+    if (
+      !this.isCollision(this.figure.figure, this.figure.x, this.figure.y + 1)
+    ) {
       this.figure.y++;
     } else {
       this.lockFigure();
@@ -91,7 +104,13 @@ export class Tetris {
   }
 
   private move(direction: number) {
-    if (!this.isCollision(this.figure.figure, this.figure.x + direction, this.figure.y)) {
+    if (
+      !this.isCollision(
+        this.figure.figure,
+        this.figure.x + direction,
+        this.figure.y,
+      )
+    ) {
       this.figure.x += direction;
       this.updateGameState();
     }
@@ -99,7 +118,7 @@ export class Tetris {
 
   private rotate() {
     const rotated = this.figure.figure[0].map((_, i) =>
-      this.figure.figure.map(line => line[i]).reverse()
+      this.figure.figure.map((line) => line[i]).reverse(),
     );
 
     if (!this.isCollision(rotated, this.figure.x, this.figure.y)) {
@@ -116,8 +135,8 @@ export class Tetris {
           (x + colIndex < 0 ||
             x + colIndex >= this.w ||
             y + rowIndex >= this.h ||
-            this.board[y + rowIndex]?.[x + colIndex])
-      )
+            this.board[y + rowIndex]?.[x + colIndex]),
+      ),
     );
   }
 
@@ -127,12 +146,12 @@ export class Tetris {
         if (cell) {
           this.board[this.figure.y + rowIndex][this.figure.x + colIndex] = 1;
         }
-      })
+      }),
     );
   }
 
   private clearFullLines() {
-    this.board = this.board.filter(line => line.includes(0));
+    this.board = this.board.filter((line) => line.includes(0));
     this.score += (this.h - this.board.length) * 100;
     while (this.board.length < this.h) {
       this.board.unshift(Array(this.w).fill(0));
@@ -140,14 +159,15 @@ export class Tetris {
   }
 
   private updateGameState() {
-    const displayBoard = this.board.map(line => [...line]);
+    const displayBoard = this.board.map((line) => [...line]);
 
     this.figure.figure.forEach((line, rowIndex) =>
       line.forEach((cell, colIndex) => {
         if (cell) {
-          displayBoard[this.figure.y + rowIndex][this.figure.x + colIndex] = cell;
+          displayBoard[this.figure.y + rowIndex][this.figure.x + colIndex] =
+            cell;
         }
-      })
+      }),
     );
 
     this.update(displayBoard);
